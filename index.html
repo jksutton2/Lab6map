@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Lab 6</title>
+
+         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+           crossorigin=""/>
+
+         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+           crossorigin=""></script>
+
+         <!-- Load animation tweening library requirement for CanvasFlowMapLayer -->
+         <script src="https://unpkg.com/@tweenjs/tween.js@18.6.4/dist/tween.umd.js"></script>
+
+         <!-- Load CanvasFlowMapLayer (relative URL) -->
+         <script src="CanvasFlowmapLayer.js"></script>
+
+         <!-- Load the data file -->
+         <script type="text/javascript" src="cook.js"></script>
+
+<style type="text/css">
+  html, body { margin: 0; padding: 0; height: 100%; }
+  #map { min-height: 100%; }
+
+  .title {
+      padding: 6px 8px;
+      font: 14px/16px Arial, Helvetica, sans-serif;
+      background: white;
+      background: rgba(255,255,255,0.8);
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      border-radius: 5px;
+  }
+
+  .legend {
+      padding: 6px 8px;
+      font: 14px/20px Arial, Helvetica, sans-serif;
+      background: rgba(255,255,255,0.8);
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      border-radius: 5px;
+  }
+  .legend .line { display: inline-block; width: 30px; margin-right: 6px; vertical-align: middle; }
+  .legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+</style>
+
+    </head>
+
+    <body>
+        <div id="map"></div>
+
+        <script type="text/javascript">
+
+          var map = L.map('map', {
+              center: [35.5,-84.5],
+              zoom: 5
+          });
+
+         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+           attribution: 'Tiles © Esri — Esri, DeLorme, NAVTEQ',
+           maxZoom: 11,
+           minZoom: 3
+         }).addTo(map);
+
+         L.canvasFlowmapLayer(data, {
+           originAndDestinationFieldIds: {
+             // Outflow: Cook County (A) is the ORIGIN, the other counties (B) are the DESTINATIONS
+             originUniqueIdField: 'GEOID_A',
+             originGeometry: {
+               x: 'A_lon',
+               y: 'A_lat'
+             },
+             destinationUniqueIdField: 'GEOID_B',
+             destinationGeometry: {
+               x: 'B_lon',
+               y: 'B_lat'
+             }
+           },
+
+           pathDisplayMode: 'all',
+           animationStarted: true,
+           animationEasingFamily: 'Cubic',
+           animationEasingType: 'In',
+           animationDuration: 2000,
+
+           canvasBezierStyle: {
+             type: 'classBreaks',
+             field: 'Flow_A2B', // gross outflow from Cook County
+
+             classBreakInfos: [{
+               classMinValue: 900,
+               classMaxValue: 962,
+               symbol: {
+                 strokeStyle: '#A63603',
+                 lineWidth: 10,
+                 lineCap: 'round',
+               }
+             }, {
+               classMinValue: 850,
+               classMaxValue: 899,
+               symbol: {
+                 strokeStyle: '#E6550D',
+                 lineWidth: 6,
+                 lineCap: 'round',
+               }
+             }, {
+               classMinValue: 800,
+               classMaxValue: 849,
+               symbol: {
+                 strokeStyle: '#FD8D3C',
+                 lineWidth: 3.5,
+                 lineCap: 'round',
+               }
+             }],
+           },
+
+           // Tooltip labels for each origin/destination circle
+           onEachFeature: function (feature, layer) {
+             var p = feature.properties;
+             var atB = feature.geometry.coordinates[0] === p.B_lon;
+             var name = atB ? p.County_B + ', ' + p.State_B : p.County_A + ', ' + p.State_A;
+             layer.bindTooltip(name);
+           },
+
+         }).addTo(map);
+
+         // Title control
+         var title = L.control({position: 'topright'});
+
+         title.onAdd = function (map) {
+             this._div = L.DomUtil.create('div', 'title');
+             this._div.innerHTML = "<h3>Top 10 Gross Outflows from Cook County, Illinois</h3>";
+             return this._div;
+         };
+
+         title.addTo(map);
+
+         // Legend control (matches the class breaks above)
+         var legend = L.control({position: 'bottomright'});
+
+         legend.onAdd = function (map) {
+           var div = L.DomUtil.create('div', 'legend');
+           div.innerHTML = '<b>Outflow from Cook County (people)</b><br>' +
+             '<i class="line" style="height:10px; background:#A63603"></i>900 to 962<br>' +
+             '<i class="line" style="height:6px; background:#E6550D"></i>850 to 899<br>' +
+             '<i class="line" style="height:3.5px; background:#FD8D3C"></i>800 to 849<br>' +
+             '<i class="dot" style="background:rgb(195,255,62); border:1px solid #555"></i>Origin (Cook County)<br>' +
+             '<i class="dot" style="background:rgb(17,142,170)"></i>Destination county';
+           return div;
+         };
+
+         legend.addTo(map);
+
+        </script>
+   </body>
+</html>
